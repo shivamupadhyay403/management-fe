@@ -1,7 +1,7 @@
 // hooks/use-students.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/query-keys';
-import { studentApi, type StudentFilters } from '@/lib/api/students';
+import { queryKeys } from '@/src/lib/query-keys';
+import { studentApi, type StudentFilters } from '@/src/lib/api/students';
 
 // ── Queries ───────────────────────────────────────────────────────────────
 
