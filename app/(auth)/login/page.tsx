@@ -1,4 +1,4 @@
-import LoginWrapper from '@/pages/auth/Login/LoginWrapper'
+import LoginWrapper from '@/src/ui-pages/public/Login/LoginWrapper'
 
 
 const Loginpage = () => {
