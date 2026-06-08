@@ -4,293 +4,442 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-type Role = 'admin' | 'teacher' | 'student';
+// ─── Types ────────────────────────────────────────────────────────────
+type InstitutionType = 'school' | 'college' | 'coaching' | 'university';
 
 interface FormData {
-  fullName: string;
-  email: string;
+  // Step 1 – Institution info
+  institutionName: string;
+  institutionType: InstitutionType | '';
+  affiliationBoard: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
   phone: string;
+  website: string;
+
+  // Step 2 – Admin account
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string;
   password: string;
   confirmPassword: string;
-  role: Role;
-  // role-specific
-  department?: string;
-  employeeId?: string;
-  rollNumber?: string;
-  class?: string;
-  institutionCode: string;
+
+  // Step 3 – Verification
+  regNumber: string;
+  agreed: boolean;
 }
 
-const roleConfig = {
-  admin: {
-    label: 'Admin',
-    desc: 'Manage the entire institution',
-    color: 'border-violet-500 bg-violet-50 text-violet-700',
-    btn: 'bg-violet-600 hover:bg-violet-700',
-    badge: 'bg-violet-100 text-violet-700',
-    extra: ['department'],
-  },
-  teacher: {
-    label: 'Teacher',
-    desc: 'Manage classes and students',
-    color: 'border-emerald-500 bg-emerald-50 text-emerald-700',
-    btn: 'bg-emerald-600 hover:bg-emerald-700',
-    badge: 'bg-emerald-100 text-emerald-700',
-    extra: ['department', 'employeeId'],
-  },
-  student: {
-    label: 'Student',
-    desc: 'View results and timetable',
-    color: 'border-sky-500 bg-sky-50 text-sky-700',
-    btn: 'bg-sky-600 hover:bg-sky-700',
-    badge: 'bg-sky-100 text-sky-700',
-    extra: ['rollNumber', 'class'],
-  },
-};
+const institutionTypes: { value: InstitutionType; label: string; icon: string }[] = [
+  { value: 'school',     label: 'School',     icon: '◎' },
+  { value: 'college',    label: 'College',    icon: '◈' },
+  { value: 'coaching',   label: 'Coaching',   icon: '◆' },
+  { value: 'university', label: 'University', icon: '⬡' },
+];
 
-const departments = ['Computer Science', 'Mathematics', 'Physics', 'Chemistry', 'English', 'History', 'Commerce', 'Biology'];
-const classes = ['Class 9A', 'Class 9B', 'Class 10A', 'Class 10B', 'Class 11 Science', 'Class 11 Commerce', 'Class 12 Science', 'Class 12 Commerce'];
+const indianStates = [
+  'Andhra Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat',
+  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab',
+  'Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh',
+  'Uttarakhand','West Bengal',
+];
 
+const STEPS = [
+  { n: 1, title: 'Institution info',   desc: 'Name, type & location'   },
+  { n: 2, title: 'Admin account',      desc: 'Primary admin credentials' },
+  { n: 3, title: 'Verification',       desc: 'Registration & agreement'  },
+];
+
+const GRAD = 'from-violet-500 to-violet-700';
+const RING = 'ring-violet-500/30';
+
+// ─── Component ────────────────────────────────────────────────────────
 export default function Register() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+
   const [form, setForm] = useState<FormData>({
-    fullName: '', email: '', phone: '', password: '', confirmPassword: '',
-    role: 'student', department: '', employeeId: '', rollNumber: '', class: '', institutionCode: '',
+    institutionName: '', institutionType: '', affiliationBoard: '',
+    address: '', city: '', state: '', pincode: '', phone: '', website: '',
+    adminName: '', adminEmail: '', adminPhone: '', password: '', confirmPassword: '',
+    regNumber: '', agreed: false,
   });
 
-  const set = (key: keyof FormData, val: string) => {
-    setForm((f) => ({ ...f, [key]: val }));
-    setErrors((e) => ({ ...e, [key]: undefined }));
+  const set = (key: keyof FormData, val: string | boolean) => {
+    setForm(f => ({ ...f, [key]: val }));
+    setErrors(e => ({ ...e, [key]: undefined }));
   };
 
+  // ── Validation ──────────────────────────────────────────────────────
   const validateStep1 = () => {
-    const e: Partial<FormData> = {};
-    if (!form.fullName.trim()) e.fullName = 'Full name is required';
-    if (!form.email.includes('@')) e.email = 'Valid email required';
-    if (form.phone.length < 10) e.phone = 'Valid phone required';
-    if (form.password.length < 6) e.password = 'Minimum 6 characters';
+    const e: Partial<Record<keyof FormData, string>> = {};
+    if (!form.institutionName.trim())  e.institutionName  = 'Institution name is required';
+    if (!form.institutionType)         e.institutionType  = 'Select institution type';
+    if (!form.city.trim())             e.city             = 'City is required';
+    if (!form.state)                   e.state            = 'State is required';
+    if (form.pincode.length !== 6)     e.pincode          = 'Enter valid 6-digit pincode';
+    if (form.phone.length < 10)        e.phone            = 'Enter valid phone number';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const e: Partial<Record<keyof FormData, string>> = {};
+    if (!form.adminName.trim())          e.adminName     = 'Admin name is required';
+    if (!form.adminEmail.includes('@'))  e.adminEmail    = 'Valid email required';
+    if (form.adminPhone.length < 10)     e.adminPhone    = 'Valid phone required';
+    if (form.password.length < 8)        e.password      = 'Minimum 8 characters';
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
-    if (validateStep1()) setStep(2);
+    if (step === 1 && validateStep1()) setStep(2);
+    if (step === 2 && validateStep2()) setStep(3);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.institutionCode.trim()) {
-      setErrors({ institutionCode: 'Institution code is required' });
-      return;
-    }
+    if (!form.regNumber.trim()) { setErrors({ regNumber: 'Registration number is required' }); return; }
+    if (!form.agreed) { setErrors({ agreed: 'You must agree to proceed' }); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1400));
+    await new Promise(r => setTimeout(r, 1600));
     setLoading(false);
     router.push('/login');
   };
 
-  const cfg = roleConfig[form.role];
-
-  const InputField = ({
-    label, field, type = 'text', placeholder, children,
-  }: { label: string; field: keyof FormData; type?: string; placeholder?: string; children?: React.ReactNode }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
-      {children ?? (
-        <input
-          type={type}
-          value={form[field] as string}
-          onChange={(e) => set(field, e.target.value)}
-          placeholder={placeholder}
-          className={`w-full px-4 py-2.5 rounded-lg border text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all ${
-            errors[field] ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-violet-400'
-          }`}
-        />
-      )}
-      {errors[field] && <p className="text-red-500 text-xs mt-1">{errors[field]}</p>}
+  // ── Field helpers ───────────────────────────────────────────────────
+  const Field = ({
+    label, field, type = 'text', placeholder, half,
+  }: { label: string; field: keyof FormData; type?: string; placeholder?: string; half?: boolean }) => (
+    <div className={half ? '' : ''}>
+      <label className="block text-[10px] font-semibold text-white/35 mb-1.5 uppercase tracking-widest">{label}</label>
+      <input
+        type={type}
+        value={form[field] as string}
+        onChange={e => set(field, e.target.value)}
+        placeholder={placeholder}
+        className={`w-full px-4 py-2.5 rounded-xl border text-white text-sm placeholder:text-white/20 bg-white/[0.05] focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all ${
+          errors[field] ? 'border-rose-500/40 bg-rose-500/5' : 'border-white/[0.08]'
+        }`}
+      />
+      {errors[field] && <p className="text-rose-400 text-[11px] mt-1">{errors[field]}</p>}
     </div>
   );
 
+  const SelectField = ({ label, field, options, placeholder }: {
+    label: string; field: keyof FormData; options: string[]; placeholder: string;
+  }) => (
+    <div>
+      <label className="block text-[10px] font-semibold text-white/35 mb-1.5 uppercase tracking-widest">{label}</label>
+      <select
+        value={form[field] as string}
+        onChange={e => set(field, e.target.value)}
+        className={`w-full px-4 py-2.5 rounded-xl border bg-[#12141a] text-sm focus:outline-none focus:border-white/25 transition-all appearance-none ${
+          errors[field]
+            ? 'border-rose-500/40 text-white'
+            : form[field]
+              ? 'border-white/[0.08] text-white'
+              : 'border-white/[0.08] text-white/30'
+        }`}
+      >
+        <option value="" disabled className="text-white/30">{placeholder}</option>
+        {options.map(o => <option key={o} value={o} className="text-white bg-[#12141a]">{o}</option>)}
+      </select>
+      {errors[field] && <p className="text-rose-400 text-[11px] mt-1">{errors[field]}</p>}
+    </div>
+  );
+
+  // ── Render ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid lg:grid-cols-5 bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+    <div className="min-h-screen bg-[#0b0d11] flex items-center justify-center p-4 py-10 font-[family-name:var(--font-geist-sans)]">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[140px] opacity-10 bg-gradient-to-br from-violet-500 to-violet-800" />
+      </div>
 
-        {/* ── Sidebar ── */}
-        <div className="lg:col-span-2 bg-slate-900 p-8 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-violet-600/15" />
-
-          <div>
-            <div className="flex items-center gap-2 mb-10">
-              <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center text-white font-bold text-sm">EX</div>
-              <span className="text-white font-semibold">EduExcel</span>
-            </div>
-
-            <h2 className="text-2xl font-bold text-white mb-2">Join your institution</h2>
-            <p className="text-slate-400 text-sm mb-8">Create your account and get access to your personalized dashboard.</p>
-
-            {/* Steps */}
-            <div className="space-y-4">
-              {[
-                { n: 1, title: 'Personal details', desc: 'Name, email, password' },
-                { n: 2, title: 'Role & institution', desc: 'Your role and school code' },
-              ].map((s) => (
-                <div key={s.n} className="flex items-start gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 transition-colors ${
-                    step > s.n ? 'bg-green-500 text-white' :
-                    step === s.n ? 'bg-violet-500 text-white' :
-                    'bg-white/10 text-slate-400'
-                  }`}>
-                    {step > s.n ? '✓' : s.n}
-                  </div>
-                  <div>
-                    <p className={`text-sm font-medium ${step >= s.n ? 'text-white' : 'text-slate-500'}`}>{s.title}</p>
-                    <p className="text-xs text-slate-500">{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+      <div className="relative w-full max-w-5xl">
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-8 justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-black text-sm shadow-lg">
+            EX
           </div>
-
-          <p className="relative text-xs text-slate-500">
-            Already have an account?{' '}
-            <Link href="/login" className="text-violet-400 hover:underline">Sign in here</Link>
-          </p>
+          <span className="text-white font-semibold text-lg tracking-tight">EduExcel</span>
         </div>
 
-        {/* ── Form ── */}
-        <div className="lg:col-span-3 p-8">
-          {/* Role picker always visible */}
-          <div className="mb-6">
-            <p className="text-xs font-medium text-slate-500 mb-2">I am a</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(roleConfig) as Role[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => set('role', r)}
-                  className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                    form.role === r ? roleConfig[r].color : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                  }`}
-                >
-                  {roleConfig[r].label}
-                </button>
-              ))}
+        <div className="grid lg:grid-cols-5 bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden shadow-2xl backdrop-blur-sm">
+
+          {/* ── Left Sidebar ── */}
+          <div className="lg:col-span-2 bg-white/[0.02] border-r border-white/[0.05] p-8 flex flex-col justify-between">
+            <div>
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-white mb-1">Register your institution</h2>
+                <p className="text-white/30 text-sm leading-relaxed">
+                  Set up your institution on EduExcel. An admin account will be created automatically — you can then invite teachers and students from your dashboard.
+                </p>
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-1 mb-10">
+                {STEPS.map((s, i) => {
+                  const state = step > s.n ? 'done' : step === s.n ? 'active' : 'idle';
+                  return (
+                    <div key={s.n}>
+                      <div className="flex items-start gap-4 py-3">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 transition-all duration-300 ${
+                          state === 'done'   ? 'bg-teal-500 text-white' :
+                          state === 'active' ? `bg-gradient-to-br ${GRAD} text-white ring-2 ${RING}` :
+                          'bg-white/[0.06] text-white/20 border border-white/[0.08]'
+                        }`}>
+                          {state === 'done' ? '✓' : s.n}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm font-medium ${state !== 'idle' ? 'text-white' : 'text-white/25'}`}>{s.title}</p>
+                          <p className="text-xs text-white/25">{s.desc}</p>
+                        </div>
+                      </div>
+                      {i < STEPS.length - 1 && (
+                        <div className={`ml-[13px] w-px h-4 transition-colors ${step > s.n ? 'bg-teal-500/40' : 'bg-white/[0.06]'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Info box */}
+              <div className="bg-violet-500/8 border border-violet-500/15 rounded-xl p-4">
+                <p className="text-violet-300/80 text-xs font-semibold mb-1.5 uppercase tracking-wider">How it works</p>
+                <ul className="space-y-1.5 text-[11px] text-white/35 leading-relaxed">
+                  <li className="flex gap-2"><span className="text-violet-400 flex-shrink-0">①</span> Register your institution with an admin account</li>
+                  <li className="flex gap-2"><span className="text-violet-400 flex-shrink-0">②</span> Log in as Admin to your dashboard</li>
+                  <li className="flex gap-2"><span className="text-violet-400 flex-shrink-0">③</span> Add teachers, students and custom roles</li>
+                  <li className="flex gap-2"><span className="text-violet-400 flex-shrink-0">④</span> Share the institution code with members</li>
+                </ul>
+              </div>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">{cfg.desc}</p>
+
+            <p className="text-xs text-white/20 mt-8">
+              Already registered?{' '}
+              <Link href="/login" className="text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors">
+                Sign in as Admin
+              </Link>
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-slate-800 text-lg mb-1">Personal details</h3>
+          {/* ── Right Form ── */}
+          <div className="lg:col-span-3 p-8">
 
-                <InputField label="Full name" field="fullName" placeholder="John Smith" />
-                <InputField label="Email address" field="email" type="email" placeholder="john@school.edu" />
-                <InputField label="Phone number" field="phone" type="tel" placeholder="+91 98765 43210" />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Password" field="password" type="password" placeholder="Min 6 characters" />
-                  <InputField label="Confirm password" field="confirmPassword" type="password" placeholder="Repeat password" />
-                </div>
-
+            {/* Step header */}
+            <div className="mb-6">
+              {step > 1 && (
                 <button
                   type="button"
-                  onClick={handleNext}
-                  className={`w-full py-2.5 rounded-lg text-white font-semibold text-sm transition-all mt-2 ${cfg.btn}`}
+                  onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}
+                  className="text-white/30 hover:text-white/60 text-xs mb-3 transition-colors flex items-center gap-1"
                 >
-                  Continue →
+                  ← Back
                 </button>
+              )}
+              <div className="flex items-center gap-3">
+                <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${GRAD} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                  {step}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">{STEPS[step - 1].title}</h3>
+                  <p className="text-white/30 text-xs">Step {step} of 3</p>
+                </div>
               </div>
-            )}
+            </div>
 
-            {step === 2 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-1">
+            <form onSubmit={handleSubmit}>
+
+              {/* ── STEP 1: Institution Info ── */}
+              {step === 1 && (
+                <div className="space-y-4">
+                  <Field label="Institution name" field="institutionName" placeholder="St. Xavier's High School" />
+
+                  {/* Type picker */}
+                  <div>
+                    <label className="block text-[10px] font-semibold text-white/35 mb-2 uppercase tracking-widest">Institution type</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {institutionTypes.map(t => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => set('institutionType', t.value)}
+                          className={`flex flex-col items-center gap-1 py-3 rounded-xl border text-xs font-medium transition-all ${
+                            form.institutionType === t.value
+                              ? `bg-gradient-to-br ${GRAD} border-transparent text-white ring-2 ${RING}`
+                              : 'border-white/[0.07] text-white/35 hover:border-white/15 hover:text-white/55 bg-white/[0.02]'
+                          }`}
+                        >
+                          <span className="text-base">{t.icon}</span>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    {errors.institutionType && <p className="text-rose-400 text-[11px] mt-1">{errors.institutionType}</p>}
+                  </div>
+
+                  <Field label="Affiliation / Board (optional)" field="affiliationBoard" placeholder="e.g. CBSE, ICSE, State Board" />
+
+                  <Field label="Address" field="address" placeholder="Street address" />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="City" field="city" placeholder="Mumbai" />
+                    <SelectField label="State" field="state" options={indianStates} placeholder="Select state" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Pincode" field="pincode" placeholder="400001" type="tel" />
+                    <Field label="Phone" field="phone" placeholder="+91 98765 43210" type="tel" />
+                  </div>
+
+                  <Field label="Website (optional)" field="website" placeholder="https://yourschool.edu.in" type="url" />
+
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
-                    className="text-slate-400 hover:text-slate-600 text-sm"
+                    onClick={handleNext}
+                    className={`w-full py-3 rounded-xl text-white font-semibold text-sm bg-gradient-to-r ${GRAD} hover:opacity-90 transition-all mt-2 shadow-lg`}
                   >
-                    ← Back
+                    Continue to Admin Setup →
                   </button>
-                  <h3 className="font-semibold text-slate-800 text-lg">Role & institution</h3>
                 </div>
+              )}
 
-                {/* Role-specific fields */}
-                {(form.role === 'teacher' || form.role === 'admin') && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Department</label>
-                    <select
-                      value={form.department}
-                      onChange={(e) => set('department', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
-                    >
-                      <option value="">Select department</option>
-                      {departments.map((d) => <option key={d}>{d}</option>)}
-                    </select>
+              {/* ── STEP 2: Admin Account ── */}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 mb-2">
+                    <p className="text-white/60 text-xs">
+                      This creates the <span className="text-violet-400 font-semibold">primary admin</span> for your institution. The admin can log in and manage all members, roles and settings.
+                    </p>
                   </div>
-                )}
 
-                {form.role === 'teacher' && (
-                  <InputField label="Employee ID" field="employeeId" placeholder="EMP-2024-001" />
-                )}
+                  <Field label="Admin full name" field="adminName" placeholder="Rajesh Kumar" />
 
-                {form.role === 'student' && (
-                  <>
-                    <InputField label="Roll number" field="rollNumber" placeholder="2024CS001" />
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Class / Section</label>
-                      <select
-                        value={form.class}
-                        onChange={(e) => set('class', e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition-all"
-                      >
-                        <option value="">Select your class</option>
-                        {classes.map((c) => <option key={c}>{c}</option>)}
-                      </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Admin email" field="adminEmail" type="email" placeholder="admin@yourschool.edu" />
+                    <Field label="Admin phone" field="adminPhone" type="tel" placeholder="+91 98765 43210" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Password" field="password" type="password" placeholder="Min 8 characters" />
+                    <Field label="Confirm password" field="confirmPassword" type="password" placeholder="Repeat password" />
+                  </div>
+
+                  {/* Password strength hint */}
+                  {form.password.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-1">
+                        {[1,2,3,4].map(i => (
+                          <div
+                            key={i}
+                            className={`h-1 flex-1 rounded-full transition-colors ${
+                              form.password.length >= i * 3
+                                ? i <= 1 ? 'bg-rose-500' : i <= 2 ? 'bg-amber-500' : i <= 3 ? 'bg-teal-500' : 'bg-green-400'
+                                : 'bg-white/[0.08]'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-white/25">
+                        {form.password.length < 4 ? 'Too short' : form.password.length < 7 ? 'Weak' : form.password.length < 10 ? 'Fair' : 'Strong'}
+                      </p>
                     </div>
-                  </>
-                )}
-
-                <InputField label="Institution code" field="institutionCode" placeholder="e.g. SCH-MH-2024" />
-                <p className="text-xs text-slate-400 -mt-2">Get this code from your institution's admin.</p>
-
-                <div className="flex items-start gap-2 mt-1">
-                  <input type="checkbox" required id="terms" className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-violet-600" />
-                  <label htmlFor="terms" className="text-xs text-slate-500">
-                    I agree to the{' '}
-                    <a href="#" className="text-violet-600 hover:underline">Terms of Service</a>{' '}
-                    and{' '}
-                    <a href="#" className="text-violet-600 hover:underline">Privacy Policy</a>
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full py-2.5 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-70 ${cfg.btn}`}
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                      Creating account...
-                    </span>
-                  ) : (
-                    `Create ${cfg.label} account`
                   )}
-                </button>
-              </div>
-            )}
-          </form>
+
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className={`w-full py-3 rounded-xl text-white font-semibold text-sm bg-gradient-to-r ${GRAD} hover:opacity-90 transition-all mt-2 shadow-lg`}
+                  >
+                    Continue to Verification →
+                  </button>
+                </div>
+              )}
+
+              {/* ── STEP 3: Verification ── */}
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 mb-2">
+                    <p className="text-white/60 text-xs leading-relaxed">
+                      Provide your institution's official registration number for verification. After submission, EduExcel will review and activate your account within <span className="text-white/80">24 hours</span>.
+                    </p>
+                  </div>
+
+                  <Field
+                    label="Institution registration number"
+                    field="regNumber"
+                    placeholder="e.g. MH/EDU/2024/00123"
+                  />
+                  <p className="text-[10px] text-white/20 -mt-2">
+                    This is issued by your state education department or university authority.
+                  </p>
+
+                  {/* Summary card */}
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 space-y-2.5">
+                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Registration summary</p>
+                    <SummaryRow label="Institution" value={form.institutionName || '—'} />
+                    <SummaryRow label="Type" value={form.institutionType ? institutionTypes.find(t => t.value === form.institutionType)?.label ?? '—' : '—'} />
+                    <SummaryRow label="Location" value={form.city && form.state ? `${form.city}, ${form.state}` : '—'} />
+                    <SummaryRow label="Admin" value={form.adminName || '—'} />
+                    <SummaryRow label="Admin email" value={form.adminEmail || '—'} />
+                  </div>
+
+                  <div className="flex items-start gap-3 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={form.agreed}
+                      onChange={e => set('agreed', e.target.checked)}
+                      className="w-4 h-4 mt-0.5 rounded border-white/20 accent-violet-500 flex-shrink-0"
+                    />
+                    <label htmlFor="terms" className="text-xs text-white/40 leading-relaxed">
+                      I confirm the above information is accurate and agree to{' '}
+                      <a href="#" className="text-white/70 hover:text-white underline underline-offset-2 transition-colors">Terms of Service</a>
+                      {' '}and{' '}
+                      <a href="#" className="text-white/70 hover:text-white underline underline-offset-2 transition-colors">Privacy Policy</a>
+                    </label>
+                  </div>
+                  {errors.agreed && <p className="text-rose-400 text-[11px] -mt-2">{errors.agreed}</p>}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full py-3 rounded-xl text-white font-semibold text-sm bg-gradient-to-r ${GRAD} hover:opacity-90 transition-all disabled:opacity-50 shadow-lg`}
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Submitting registration...
+                      </span>
+                    ) : 'Submit institution registration →'}
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Summary row helper ───────────────────────────────────────────────
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[11px] text-white/30">{label}</span>
+      <span className="text-[11px] text-white/70 font-medium truncate max-w-[55%] text-right">{value}</span>
     </div>
   );
 }
