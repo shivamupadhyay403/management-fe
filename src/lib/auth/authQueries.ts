@@ -135,6 +135,7 @@ export function useLogin() {
         'redirect'
       );
       router.push(redirect ?? getRoleHome(user.role));
+      router.refresh();
     },
     onError: () => {
       dispatch(sessionCleared());
