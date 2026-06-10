@@ -2,26 +2,30 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/src/hooks/useAuth';
 
 export default function Login() {
-  const router = useRouter();
+  const { login, isLoggingIn, loginReset, loginError } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (!email || !password) { setError('Both fields are required'); return; }
-    if (!email.includes('@')) { setError('Enter a valid email address'); return; }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setLoading(false);
-    router.push('/dashboard');
+    setLocalError('');
+    loginReset()
+    // Client-side guard
+    if (!email || !password) { setLocalError('Both fields are required'); return; }
+    if (!email.includes('@')) { setLocalError('Enter a valid email address'); return; }
+
+    // Fire the React Query mutation — redirect handled in onSuccess inside useLogin
+    login({ email, password });
   };
+
+  // Local validation errors take priority; fall back to server error
+  const displayError = localError || loginError;
 
   return (
     <div className="min-h-screen bg-[#0b0d11] flex items-center justify-center p-4 font-[family-name:var(--font-geist-sans)]">
@@ -51,10 +55,11 @@ export default function Login() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setLocalError(''); }}
                 placeholder="admin@yourschool.edu"
                 autoComplete="email"
-                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all"
+                disabled={isLoggingIn}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all disabled:opacity-50"
               />
             </div>
 
@@ -69,10 +74,11 @@ export default function Login() {
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); setLocalError(''); }}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all pr-16"
+                  disabled={isLoggingIn}
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all pr-16 disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -84,18 +90,18 @@ export default function Login() {
               </div>
             </div>
 
-            {error && (
+            {displayError && (
               <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-400 text-xs flex items-center gap-2">
-                <span>⚠</span> {error}
+                <span>⚠</span> {displayError}
               </div>
             )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoggingIn}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm bg-gradient-to-br from-violet-500 to-violet-700 shadow-lg hover:opacity-90 transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
             >
-              {loading ? (
+              {isLoggingIn ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -107,7 +113,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/[0.06]" />
             <span className="text-white/20 text-[10px]">OR</span>
@@ -122,7 +127,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Footer note */}
         <div className="mt-6 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
           <p className="text-center text-white/20 text-[11px] leading-relaxed">
             Members (teachers & students) are added by the admin.<br />

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '@/src/hooks/useAuth';
 import Link from 'next/link';
 
 const stats = [
@@ -67,6 +68,7 @@ const roles = [
 ];
 
 export default function HomePage() {
+  const { isAuthed } = useAuth()
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* ── Nav ── */}
@@ -83,7 +85,7 @@ export default function HomePage() {
             <a href="#roles" className="hover:text-slate-900 transition-colors">Roles</a>
             <a href="#stats" className="hover:text-slate-900 transition-colors">About</a>
           </div>
-          <div className="flex items-center gap-3">
+          {isAuthed ? <div className="flex items-center gap-3">
             <Link
               href="/login"
               className="text-sm text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5"
@@ -96,7 +98,15 @@ export default function HomePage() {
             >
               Get started
             </Link>
-          </div>
+          </div> :
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5"
+              >
+                Dashboard
+              </Link>
+            </div>}
         </div>
       </nav>
 
