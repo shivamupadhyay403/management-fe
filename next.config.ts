@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  productionBrowserSourceMaps: false,
+    experimental: {
+    optimizePackageImports: [
+      '@hugeicons/react',
+      '@tanstack/react-query',
+    ],
+  },
 };
 
 export default nextConfig;

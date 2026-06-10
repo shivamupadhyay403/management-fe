@@ -2,183 +2,106 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/src/hooks/useAuth';
 
-type Role = 'admin' | 'teacher' | 'student';
+export default function Login() {
+  const { login, isLoggingIn, loginReset, loginError } = useAuth();
 
-const roles: { value: Role; label: string; color: string; activeClass: string }[] = [
-  { value: 'admin',   label: 'Admin',   color: 'text-violet-600', activeClass: 'border-violet-500 bg-violet-50 text-violet-700' },
-  { value: 'teacher', label: 'Teacher', color: 'text-emerald-600', activeClass: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
-  { value: 'student', label: 'Student', color: 'text-sky-600', activeClass: 'border-sky-500 bg-sky-50 text-sky-700' },
-];
-
-export default function LoginPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<Role>('admin');
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  const accentColors: Record<Role, string> = {
-    admin:   'bg-violet-600 hover:bg-violet-700',
-    teacher: 'bg-emerald-600 hover:bg-emerald-700',
-    student: 'bg-sky-600 hover:bg-sky-700',
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    if (!form.email || !form.password) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    setLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    router.push('/dashboard');
+    setLocalError('');
+    loginReset()
+    // Client-side guard
+    if (!email || !password) { setLocalError('Both fields are required'); return; }
+    if (!email.includes('@')) { setLocalError('Enter a valid email address'); return; }
+
+    // Fire the React Query mutation — redirect handled in onSuccess inside useLogin
+    login({ email, password });
   };
+
+  // Local validation errors take priority; fall back to server error
+  const displayError = localError || loginError;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* ── Left panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-violet-600/20" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-violet-600/10" />
-
-        {/* Logo */}
-        <div className="relative flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white font-bold">
-            EX
-          </div>
-          <span className="text-white font-semibold text-lg">EduExcel</span>
-        </div>
-
-        {/* Center content */}
-        <div className="relative">
-          <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Welcome back to
-            <br />
-            <span className="text-violet-400">your dashboard</span>
-          </h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-8">
-            Manage students, teachers, attendance, exams, and fees — all from one place.
-          </p>
-
-          {/* Feature pills */}
-          <div className="flex flex-wrap gap-2">
-            {['Student Records', 'Attendance', 'Exam Results', 'Fee Tracking', 'Timetable'].map((f) => (
-              <span key={f} className="text-xs bg-white/10 text-slate-300 border border-white/10 px-3 py-1.5 rounded-full">
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="relative grid grid-cols-3 gap-4">
-          {[
-            { label: 'Students', val: '1,284' },
-            { label: 'Teachers', val: '64' },
-            { label: 'Pass Rate', val: '98%' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <p className="text-2xl font-bold text-white">{s.val}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
-            </div>
-          ))}
-        </div>
+    <div className="min-h-screen bg-[#0b0d11] flex items-center justify-center p-4 font-[family-name:var(--font-geist-sans)]">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[120px] opacity-15 bg-gradient-to-br from-violet-500 to-violet-800" />
       </div>
 
-      {/* ── Right panel ── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center text-white font-bold text-sm">EX</div>
-            <span className="font-semibold text-slate-800">EduExcel</span>
+      <div className="relative w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10 justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center text-white font-black text-sm shadow-lg">
+            EX
           </div>
+          <span className="text-white font-semibold text-lg tracking-tight">EduExcel</span>
+        </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 mb-1">Sign in</h1>
-          <p className="text-slate-500 text-sm mb-8">
-            Don't have an account?{' '}
-            <Link href="/register" className="text-violet-600 hover:underline font-medium">Register here</Link>
-          </p>
+        <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
+          <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
+          <p className="text-white/35 text-sm mb-8">Sign in to your institution's admin panel</p>
 
-          {/* Role selector */}
-          <div className="mb-6">
-            <p className="text-xs font-medium text-slate-500 mb-2">Sign in as</p>
-            <div className="grid grid-cols-3 gap-2">
-              {roles.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setRole(r.value)}
-                  className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                    role === r.value ? r.activeClass : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
-
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email address</label>
+              <label className="block text-[10px] font-semibold text-white/35 mb-1.5 uppercase tracking-widest">
+                Email address
+              </label>
               <input
                 type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder={`${role}@school.edu`}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setLocalError(''); }}
+                placeholder="admin@yourschool.edu"
+                autoComplete="email"
+                disabled={isLoggingIn}
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all disabled:opacity-50"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-slate-700">Password</label>
-                <a href="#" className="text-xs text-violet-600 hover:underline">Forgot password?</a>
+                <label className="text-[10px] font-semibold text-white/35 uppercase tracking-widest">Password</label>
+                <Link href="/forgot" className="text-[11px] text-white/30 hover:text-white/55 transition-colors">
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <input
                   type={showPass ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Enter your password"
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all pr-10"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setLocalError(''); }}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  disabled={isLoggingIn}
+                  className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all pr-16 disabled:opacity-50"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                  onClick={() => setShowPass(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-white/25 hover:text-white/55 transition-colors tracking-wider"
                 >
-                  {showPass ? 'Hide' : 'Show'}
+                  {showPass ? 'HIDE' : 'SHOW'}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input id="remember" type="checkbox" className="w-4 h-4 rounded border-slate-300 accent-violet-600" />
-              <label htmlFor="remember" className="text-sm text-slate-600">Remember me for 30 days</label>
-            </div>
+            {displayError && (
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 text-rose-400 text-xs flex items-center gap-2">
+                <span>⚠</span> {displayError}
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={loading}
-              className={`w-full py-2.5 rounded-lg text-white font-semibold text-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed ${accentColors[role]}`}
+              disabled={isLoggingIn}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm bg-gradient-to-br from-violet-500 to-violet-700 shadow-lg hover:opacity-90 transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
             >
-              {loading ? (
+              {isLoggingIn ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -186,24 +109,28 @@ export default function LoginPage() {
                   </svg>
                   Signing in...
                 </span>
-              ) : (
-                `Sign in as ${role.charAt(0).toUpperCase() + role.slice(1)}`
-              )}
+              ) : 'Sign in'}
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-            <p className="text-xs font-medium text-slate-500 mb-2">Demo credentials</p>
-            <div className="space-y-1 text-xs text-slate-600">
-              <p><span className="font-medium text-violet-600">Admin:</span> admin@school.edu / admin123</p>
-              <p><span className="font-medium text-emerald-600">Teacher:</span> teacher@school.edu / teacher123</p>
-              <p><span className="font-medium text-sky-600">Student:</span> student@school.edu / student123</p>
-            </div>
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-white/20 text-[10px]">OR</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
-          <p className="text-center text-xs text-slate-400 mt-8">
-            Protected by 256-bit SSL encryption
+          <p className="text-center text-xs text-white/25">
+            New institution?{' '}
+            <Link href="/register" className="text-violet-400 hover:text-violet-300 transition-colors underline underline-offset-2">
+              Register here
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-6 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-3">
+          <p className="text-center text-white/20 text-[11px] leading-relaxed">
+            Members (teachers & students) are added by the admin.<br />
+            Contact your institution admin to get access.
           </p>
         </div>
       </div>
