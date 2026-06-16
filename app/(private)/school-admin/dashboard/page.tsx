@@ -1,9 +1,9 @@
+import DashboardWrapper from "@/src/ui-pages/private/school-admin/dashboard/DashboardWrapper";
 
-import DashboardWrapper from "@/src/ui-pages/private/teacher/dashboard/DashboardWrapper";
-export default function TeacherDashboard() {
+export default function SchoolAdminDashboard() {
   return (
     <>
-        <DashboardWrapper />
+      <DashboardWrapper />
     </>
   )
 }
